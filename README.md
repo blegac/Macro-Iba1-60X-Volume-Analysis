@@ -102,6 +102,11 @@ All channels other than the selected one are automatically closed after each fil
 ### 5. ROI management with 3D Manager
 - Detected objects are loaded into the **3D Manager**
 - ⚠️ **Interactive pause**: the user can review and manually edit ROIs
+  - To see the ROIs overlaid on the image, click **"Live ROIs: ON"**
+  - Verify each ROI individually:
+    - Delete irrelevant ROIs using the **"Delete"** button
+    - Merge ROIs belonging to the same cell using the **"Merge"** button
+  - Once done, click **"OK"** in the "Verify ROIs" pop-up window
 - All objects are labeled `"Microglia"`
 - ROIs are saved as a `.zip` file
 
