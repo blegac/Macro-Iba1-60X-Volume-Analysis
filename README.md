@@ -2,145 +2,145 @@
 
 ## Description
 
-Cette macro ImageJ/Fiji automatise l'analyse volumétrique 3D de cellules microgliales marquées à l'**Iba1** à partir d'images confocales au grossissement 60×. Elle traite en lot tous les fichiers `.oif` (format Olympus) présents dans un dossier, applique un prétraitement d'image, détecte les objets 3D et exporte les mesures dans des fichiers CSV.
+This ImageJ/Fiji macro automates the 3D volumetric analysis of microglial cells labeled with **Iba1** from confocal images acquired at 60× magnification. It batch-processes all `.oif` files (Olympus format) found in a selected folder, applies image preprocessing, detects 3D objects, and exports measurements to CSV files.
 
-La macro est **générique** : le canal contenant Iba1 est sélectionné par l'utilisateur au démarrage, ce qui la rend compatible avec différentes configurations d'acquisition multicanaux.
+The macro is **generic**: the channel containing Iba1 is selected by the user at startup, making it compatible with different multichannel acquisition configurations.
 
 ---
 
-## Prérequis
+## Requirements
 
-### Logiciel
-- [Fiji / ImageJ](https://fiji.sc/) (version récente recommandée)
+### Software
+- [Fiji / ImageJ](https://fiji.sc/) (latest version recommended)
 
-### Plugins requis
-| Plugin | Utilisation |
+### Required plugins
+| Plugin | Purpose |
 |---|---|
-| **Bio-Formats Importer** | Ouverture des fichiers `.oif` |
-| **3D Objects Counter on GPU (CLIJx, Experimental)** | Comptage d'objets 3D accéléré GPU |
-| **3D Objects Counter** (classique) | Méthode de fallback si GPU insuffisant |
-| **3D Manager** (`mcib3d-plugins`) | Gestion, mesure et export des ROIs 3D |
-| **Results to Excel** | Export des résultats directement en fichier `.xlsx` depuis Fiji |
+| **Bio-Formats Importer** | Opening `.oif` files |
+| **3D Objects Counter on GPU (CLIJx, Experimental)** | GPU-accelerated 3D object detection |
+| **3D Objects Counter** (classic) | Fallback method if GPU is unavailable |
+| **3D Manager** (`mcib3d-plugins`) | 3D ROI management, measurement and export |
+| **Results to Excel** | Export results directly to `.xlsx` from Fiji |
 
 ---
 
-## Installation des plugins
+## Plugin Installation
 
-Tous les plugins s'installent via le gestionnaire de mises à jour de Fiji :
+All plugins are installed through Fiji's update manager:
 
-1. Aller dans **Help → Update Fiji**
-2. Cliquer sur **Manage Update Sites**
-3. Cocher les update sites suivants dans la liste :
-   - **Bio-Formats** *(inclus par défaut dans Fiji, à activer si absent)*
-   - **clij** et **clij2** *(les deux sont nécessaires pour le GPU)*
-   - **3D ImageJ Suite** *(pour le 3D Manager)*
+1. Go to **Help → Update Fiji**
+2. Click **Manage Update Sites**
+3. Check the following update sites in the list:
+   - **Bio-Formats** *(included by default in Fiji, enable if missing)*
+   - **clij** and **clij2** *(both are required for GPU support)*
+   - **3D ImageJ Suite** *(for the 3D Manager)*
    - **ResultsToExcel**
-4. Cliquer **Close** puis **Apply Changes**
-5. Redémarrer Fiji
+4. Click **Close** then **Apply Changes**
+5. Restart Fiji
 
-> ⚠️ CLIJx nécessite une carte graphique compatible OpenCL. En cas de problème, utiliser le fallback classique (l'option "No" dans le dialogue de la macro).
-
----
-
-## Format de données attendu
-
-- Fichiers **`.oif`** (Olympus Image Format) regroupés dans un seul dossier
-- Images multicanaux (nombre de canaux et position d'Iba1 variables, configurables au démarrage)
+> ⚠️ CLIJx requires an OpenCL-compatible graphics card. If GPU detection fails, use the classic fallback (select "No" in the macro dialog).
 
 ---
 
-## Structure des sorties
+## Expected Data Format
 
-La macro crée automatiquement un dossier de résultats dans le répertoire sélectionné, nommé selon la convention :
+- **`.oif`** files (Olympus Image Format) gathered in a single folder
+- Multichannel images (number of channels and Iba1 channel position are variable and configured at startup)
+
+---
+
+## Output Structure
+
+The macro automatically creates a results folder inside the selected directory, named using the following convention:
 
 ```
-YYYY_MM_DD_analysis_<NomDuDossier>/
+YYYY_MM_DD_analysis_<FolderName>/
 ├── Images/
-│   ├── <fichier>_EnhancedStack.tif      # Stack avec contraste amélioré (LUT rouge)
-│   ├── <fichier>_Preprocessed.tif       # Stack prétraité (8-bit, flou gaussien)
-│   └── <fichier>_ObjectsMapRaw.tif      # Carte des objets détectés
+│   ├── <file>_EnhancedStack.tif      # Contrast-enhanced stack (red LUT)
+│   ├── <file>_Preprocessed.tif       # Preprocessed stack (8-bit, Gaussian blur)
+│   └── <file>_ObjectsMapRaw.tif      # Raw detected objects map
 ├── ROI/
-│   └── <fichier>_Microglia_ROIs.zip     # ROIs 3D (format 3D Manager)
+│   └── <file>_Microglia_ROIs.zip     # 3D ROIs (3D Manager format)
 └── Measurements/
-    ├── <fichier>_ResultsMeasure.csv     # Mesures morphologiques (volume, surface…)
-    └── <fichier>_ResultsQuantif.csv     # Quantification d'intensité par objet
+    ├── <file>_ResultsMeasure.csv     # 3D morphological measurements (volume, surface…)
+    └── <file>_ResultsQuantif.csv     # Intensity quantification per object
 ```
 
 ---
 
-## Pipeline d'analyse (étape par étape)
+## Analysis Pipeline (step by step)
 
-### 1. Sélection du dossier
-L'utilisateur choisit le dossier contenant les fichiers `.oif`. Ce même dossier recevra les résultats.
+### 1. Folder selection
+The user selects the folder containing the `.oif` files. Results will be saved in the same folder.
 
-### 2. Configuration des canaux
-Un dialogue s'affiche **une seule fois** avant le début du traitement :
+### 2. Channel configuration
+A dialog appears **once** before processing begins:
 
-| Champ | Description | Exemple |
+| Field | Description | Example |
 |---|---|---|
-| Nombre total de canaux | Nombre de canaux dans les images | `3` |
-| Numéro du canal Iba1 | Position du canal Iba1 (C1, C2, C3…) | `2` |
+| Total number of channels | Number of channels in the images | `3` |
+| Iba1 channel number | Position of the Iba1 channel (C1, C2, C3…) | `2` |
 
-Tous les canaux autres que celui sélectionné sont fermés automatiquement après l'ouverture de chaque fichier.
+All channels other than the selected one are automatically closed after each file is opened.
 
-### 3. Ouverture et prétraitement (par fichier)
-- Ouverture via **Bio-Formats** sans mise à l'échelle automatique
-- Calibration spatiale : **4.8309 pixels = 1 µm**
-- Fermeture automatique de tous les canaux sauf le canal Iba1
-- Application de la LUT rouge sur le canal Iba1
-- **Despeckle** (réduction du bruit) sur le stack entier
-- Amélioration du contraste (0,35 % de pixels saturés)
-- Conversion en **8-bit**
-- **Flou gaussien** (σ = 1) sur le stack
+### 3. Opening and preprocessing (per file)
+- Opening via **Bio-Formats** without auto-scaling
+- Spatial calibration: **4.8309 pixels = 1 µm**
+- Automatic closing of all channels except the Iba1 channel
+- Red LUT applied to the Iba1 channel
+- **Despeckle** (noise reduction) on the entire stack
+- Contrast enhancement (0.35% saturated pixels)
+- Conversion to **8-bit**
+- **Gaussian blur** (σ = 1) on the stack
 
-### 4. Détection des objets 3D
-- Lancement de **3D Objects Counter GPU (CLIJx)** en premier
-- ⚠️ **Pause interactive** : l'utilisateur examine la carte d'objets et valide ou rejette les résultats GPU
-  - Si **accepté** → on continue avec la carte GPU
-  - Si **rejeté** → la macro relance le **3D Objects Counter classique** en remplacement
+### 4. 3D object detection
+- **3D Objects Counter GPU (CLIJx)** is run first
+- ⚠️ **Interactive pause**: the user reviews the objects map and accepts or rejects the GPU results
+  - If **accepted** → processing continues with the GPU map
+  - If **rejected** → the macro reruns the **classic 3D Objects Counter** as a replacement
 
-### 5. Gestion des ROIs avec le 3D Manager
-- Chargement des objets détectés dans le **3D Manager**
-- ⚠️ **Pause interactive** : l'utilisateur peut vérifier et modifier les ROIs manuellement
-- Attribution du label `"Microglia"` à tous les objets
-- Sauvegarde des ROIs en `.zip`
+### 5. ROI management with 3D Manager
+- Detected objects are loaded into the **3D Manager**
+- ⚠️ **Interactive pause**: the user can review and manually edit ROIs
+- All objects are labeled `"Microglia"`
+- ROIs are saved as a `.zip` file
 
-### 6. Export des mesures
-- **`Manager3D_Measure()`** → morphologie 3D (volume, surface, compacité, etc.)
-- **`Manager3D_Quantif()`** → quantification d'intensité par objet
-- Export en `.csv` dans le dossier `Measurements/`
+### 6. Measurement export
+- **`Manager3D_Measure()`** → 3D morphology (volume, surface area, compactness, etc.)
+- **`Manager3D_Quantif()`** → intensity quantification per object
+- Results exported as `.csv` files in the `Measurements/` folder
 
-### 7. Nettoyage et itération
-- Réinitialisation du 3D Manager
-- Fermeture de toutes les fenêtres d'images
-- Garbage collection mémoire
-- Passage au fichier `.oif` suivant
+### 7. Cleanup and iteration
+- 3D Manager is reset
+- All image windows are closed
+- Memory garbage collection
+- Processing moves to the next `.oif` file
 
 ---
 
-## Interactions utilisateur
+## User Interactions
 
-Cette macro est **semi-automatique** et nécessite les interventions suivantes :
+This macro is **semi-automatic** and requires the following interactions:
 
-| Moment | Fréquence | Action requise |
+| When | Frequency | Action required |
 |---|---|---|
-| Au démarrage | Une seule fois | Sélectionner le dossier, renseigner le nombre de canaux et le canal Iba1 |
-| Après la détection GPU | Par fichier | Examiner la carte d'objets, puis choisir "Yes" (GPU) ou "No" (classique) |
-| Après l'initialisation du 3D Manager | Par fichier | Vérifier/corriger les ROIs, puis cliquer OK |
+| At startup | Once | Select folder, enter number of channels and Iba1 channel |
+| After GPU detection | Per file | Review objects map, then choose "Yes" (GPU) or "No" (classic) |
+| After 3D Manager initialization | Per file | Verify/correct ROIs, then click OK |
 
 ---
 
-## Paramètres à vérifier/adapter
+## Parameters to Check / Adjust
 
-| Paramètre | Ligne | Valeur actuelle | À modifier si… |
+| Parameter | Line | Current value | Change if… |
 |---|---|---|---|
-| Calibration spatiale | 42 | `4.8309 px = 1 µm` | Objectif ou caméra différents |
-| Sigma du flou gaussien | 74 | `1` | Niveau de bruit différent |
-| Saturation contraste | 66 | `0.35%` | Images sous/sur-exposées |
+| Spatial calibration | 42 | `4.8309 px = 1 µm` | Different objective or camera |
+| Gaussian blur sigma | 74 | `1` | Different noise level |
+| Contrast saturation | 66 | `0.35%` | Under- or over-exposed images |
 
 ---
 
 ## Notes
 
-- La macro ne traite que les fichiers `.oif` à la racine du dossier sélectionné (pas de sous-dossiers).
-- En cas d'erreur GPU, s'assurer que les plugins **CLIJ/CLIJx** sont bien installés et que la carte graphique est compatible.
+- The macro only processes `.oif` files located at the root of the selected folder (subfolders are not scanned).
+- If a GPU error occurs, make sure the **CLIJ/CLIJx** plugins are properly installed and that the graphics card is OpenCL-compatible.
